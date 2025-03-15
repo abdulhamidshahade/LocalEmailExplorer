@@ -374,3 +374,6 @@ src/LocalEmailExplorer.Services/LocalEmailExplorer.Services.EmailAPI/Properties/
 
 # Ignore LocalEmailExplorer.Services.EmailAPI.http in EmailAPI
 src/LocalEmailExplorer.Services/LocalEmailExplorer.Services.EmailAPI/LocalEmailExplorer.Services.EmailAPI.http
+
+# Ignore migrations folder in EmailAPI
+src/LocalEmailExplorer.Services/LocalEmailExplorer.Services.EmailAPI/migrations
