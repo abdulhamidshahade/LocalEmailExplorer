@@ -26,7 +26,7 @@ namespace LocalEmailExplorer.Services.EmailAPI.Controllers
         {
             try
             {
-                var emails = _emailService.GetEmailsAsync();
+                var emails = await _emailService.GetEmailsAsync();
 
                 var emailsDto = _mapper.Map<List<EmailDto>>(emails);
 
@@ -143,9 +143,11 @@ namespace LocalEmailExplorer.Services.EmailAPI.Controllers
             {
                 var createdEmail = await _emailService.CreateEmailAsync(emailDto);
 
+                var createdEmailDto = _mapper.Map<EmailDto>(createdEmail);
+
                 return new ResponseDto
                 {
-                    Data = createdEmail,
+                    Data = createdEmailDto,
                     IsSuccess = true,
                     StatusCode = 201
                 };
@@ -187,11 +189,15 @@ namespace LocalEmailExplorer.Services.EmailAPI.Controllers
         }
 
         [HttpDelete]
-        [Route("{id:guid}")]
-        public async Task<ActionResult<ResponseDto>> DeleteEmail(string id, DeleteEmailDto emailDto)
+        [Route("{emailAddress}")]
+        public async Task<ActionResult<ResponseDto>> DeleteEmail(string emailAddress)
         {
             try
             {
+                var email = await _emailService.GetEmailByEmailAddressAsync(emailAddress, track:false);
+
+                var emailDto = _mapper.Map<DeleteEmailDto>(email);
+
                 var deletedEmail = await _emailService.DeleteEmailAsync(emailDto);
 
                 return new ResponseDto
