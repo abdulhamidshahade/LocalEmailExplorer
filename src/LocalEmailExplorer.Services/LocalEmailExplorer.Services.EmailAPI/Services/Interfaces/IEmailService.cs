@@ -4,9 +4,9 @@ namespace LocalEmailExplorer.Services.EmailAPI.Services.Interfaces
 {
     public interface IEmailService
     {
-        Task<Email> CreateEmailAsync(EmailDto emailDto);
-        Task<bool> UpdateEmailAsync(EmailDto emailDto, string id);
-        Task<bool> DeleteEmailAsync(EmailDto emailDto);
+        Task<Email> CreateEmailAsync(CreateEmailDto emailDto);
+        Task<bool> UpdateEmailAsync(UpdateEmailDto emailDto, string id);
+        Task<bool> DeleteEmailAsync(DeleteEmailDto emailDto);
         Task<Email> GetEmailByIdAsync(string id);
         Task<List<Email>> GetEmailsByPhoneAsync(string phoneNumber);
         Task<List<Email>> GetEmailsByRecoveryEmailAsync(string recoveryEmail);

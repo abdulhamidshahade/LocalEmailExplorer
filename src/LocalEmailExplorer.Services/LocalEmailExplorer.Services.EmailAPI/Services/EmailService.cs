@@ -19,7 +19,7 @@ namespace LocalEmailExplorer.Services.EmailAPI.Services
             _mapper = mapper;
             _unitOfWork = unitOfWork;
         }
-        public async Task<Email> CreateEmailAsync(EmailDto emailDto)
+        public async Task<Email> CreateEmailAsync(CreateEmailDto emailDto)
         {
             if(emailDto == null)
             {
@@ -34,7 +34,7 @@ namespace LocalEmailExplorer.Services.EmailAPI.Services
             return email;
         }
 
-        public async Task<bool> DeleteEmailAsync(EmailDto emailDto)
+        public async Task<bool> DeleteEmailAsync(DeleteEmailDto emailDto)
         {
             if (emailDto == null)
             {
@@ -119,7 +119,7 @@ namespace LocalEmailExplorer.Services.EmailAPI.Services
             return await _context.Emails.AnyAsync(i => i.Id == id);
         }
 
-        public async Task<bool> UpdateEmailAsync(EmailDto emailDto, string id)
+        public async Task<bool> UpdateEmailAsync(UpdateEmailDto emailDto, string id)
         {
             if (string.IsNullOrEmpty(id) || emailDto == null)
             {
