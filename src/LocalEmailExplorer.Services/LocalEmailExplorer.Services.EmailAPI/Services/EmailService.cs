@@ -49,6 +49,33 @@ namespace LocalEmailExplorer.Services.EmailAPI.Services
             return true;
         }
 
+        public async Task<Email> GetEmailByEmailAddressAsync(string emailAddress, bool track)
+        {
+            if (string.IsNullOrEmpty(emailAddress))
+            {
+                throw new Exception();
+            }
+
+            Email email = new Email();
+
+            if (track)
+            {
+                email = await _context.Emails.FirstOrDefaultAsync(e => e.EmailAddress == emailAddress);
+            }
+            else
+            {
+                email = await _context.Emails.AsNoTracking().FirstOrDefaultAsync(e => e.EmailAddress == emailAddress);
+            }
+
+
+            if (email == null)
+            {
+                throw new Exception();
+            }
+
+            return email;
+        }
+
         public async Task<Email> GetEmailByIdAsync(string Id)
         {
             if(string.IsNullOrEmpty(Id))

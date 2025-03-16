@@ -13,5 +13,6 @@ namespace LocalEmailExplorer.Services.EmailAPI.Services.Interfaces
         Task<List<Email>> GetEmailsAsync();
         Task<bool> IsEmailExistsByEmailAddressAsync(string emailAddress);
         Task<bool> IsEmailExistsByIdAsync(string id);
+        Task<Email> GetEmailByEmailAddressAsync(string emailAddress, bool track);
     }
 }
