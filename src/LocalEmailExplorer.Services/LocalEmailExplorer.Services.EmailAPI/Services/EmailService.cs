@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using LocalEmailExplorer.Services.EmailAPI.Data;
+using LocalEmailExplorer.Services.EmailAPI.Halpers.Exceptions;
 using LocalEmailExplorer.Services.EmailAPI.Models.DTOs;
 using LocalEmailExplorer.Services.EmailAPI.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -12,38 +13,55 @@ namespace LocalEmailExplorer.Services.EmailAPI.Services
         private readonly IMapper _mapper;
         private readonly ApplicationDbContext _context;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ILogger<EmailService> _logger;
 
-        public EmailService(ApplicationDbContext context, IMapper mapper, IUnitOfWork unitOfWork)
+        public EmailService(ApplicationDbContext context, IMapper mapper, IUnitOfWork unitOfWork, ILogger<EmailService> logger)
         {
             _context = context;
             _mapper = mapper;
             _unitOfWork = unitOfWork;
+            _logger = logger;
         }
         public async Task<Email> CreateEmailAsync(CreateEmailDto emailDto)
         {
             if(emailDto == null)
             {
-                throw new Exception("emailDto is null");
+                throw new ArgumentException(nameof(emailDto), "emailDto is null");
             }
 
             var email = _mapper.Map<Email>(emailDto);
 
-            await _context.AddAsync(email);
-            await _unitOfWork.SaveChangesAsync();
+            try
+            {
+                await _context.AddAsync(email);
+                await _unitOfWork.SaveChangesAsync();
 
-            return email;
+                _logger.LogInformation("Created email with ID: {EmailId}", email.Id);
+
+                return email;
+            }
+            catch(Exception ex)
+            {
+                _logger.LogError(ex, "Error creating email");
+                throw;
+            }
         }
 
         public async Task<bool> DeleteEmailAsync(DeleteEmailDto emailDto)
         {
             if (emailDto == null)
             {
-                throw new Exception("emailDto is null");
+                throw new ArgumentNullException(nameof(emailDto), "emailDto is null");
             }
 
-            var email = _mapper.Map<Email>(emailDto);
+            var email = await _context.Emails.FirstOrDefaultAsync(i => i.Id == emailDto.Id);
 
-            _context.Remove(email);
+            if(email == null)
+            {
+                throw new EmailNotFoundException($"Email with ID {emailDto.Id} not found.");
+            }
+
+            _context.Emails.Remove(email);
             await _unitOfWork.SaveChangesAsync();
 
             return true;
@@ -53,25 +71,17 @@ namespace LocalEmailExplorer.Services.EmailAPI.Services
         {
             if (string.IsNullOrEmpty(emailAddress))
             {
-                throw new Exception();
+                throw new ArgumentNullException(nameof(emailAddress), "Email address cannot be null or empty.");
             }
 
-            Email email = new Email();
+            IQueryable<Email> query = _context.Emails;
 
-            if (track)
+            if (!track)
             {
-                email = await _context.Emails.FirstOrDefaultAsync(e => e.EmailAddress == emailAddress);
-            }
-            else
-            {
-                email = await _context.Emails.AsNoTracking().FirstOrDefaultAsync(e => e.EmailAddress == emailAddress);
+                query = query.AsNoTracking();
             }
 
-
-            if (email == null)
-            {
-                throw new Exception();
-            }
+            var email = await query.FirstOrDefaultAsync(e => e.EmailAddress == emailAddress);
 
             return email;
         }
@@ -80,15 +90,10 @@ namespace LocalEmailExplorer.Services.EmailAPI.Services
         {
             if(string.IsNullOrEmpty(Id))
             {
-                throw new Exception("Id is null or empty");
+                throw new ArgumentNullException(nameof(Id), "Id is null or empty");
             }
 
             var email = await _context.Emails.FirstOrDefaultAsync(e => e.Id == Id);
-
-            if(email == null)
-            {
-                throw new Exception("email is null");
-            }
 
             return email;
         }
@@ -97,39 +102,39 @@ namespace LocalEmailExplorer.Services.EmailAPI.Services
         {
             var emails = await _context.Emails.ToListAsync();
 
-            return emails != null ? emails : throw new Exception("Emails is null");
+            return emails ?? new List<Email>();
         }
 
         public async Task<List<Email>> GetEmailsByPhoneAsync(string phoneNumber)
         {
             if (string.IsNullOrEmpty(phoneNumber))
             {
-                throw new Exception("Id is null or empty");
+                throw new ArgumentNullException(nameof(phoneNumber), "Phone number is null or empty");
             }
 
             var emails = await _context.Emails.Where(p => p.Phone == phoneNumber).ToListAsync();
 
-            return emails != null ? emails : throw new Exception("Email is null");
+            return emails ?? new List<Email>();
         }
 
         public async Task<List<Email>> GetEmailsByRecoveryEmailAsync(string recoveryEmail)
         {
             if (string.IsNullOrEmpty(recoveryEmail))
             {
-                throw new Exception("recovery email is null");
+                throw new ArgumentNullException(nameof(recoveryEmail), "Recovery email is null");
             }
 
             var emails = await _context.Emails.Where(r => r.RecoveryEmail == recoveryEmail).ToListAsync();
 
 
-            return emails != null ? emails : throw new Exception("Emails is null");
+            return emails ?? new List<Email>();
         }
 
         public async Task<bool> IsEmailExistsByEmailAddressAsync(string emailAddress)
         {
             if (string.IsNullOrEmpty(emailAddress))
             {
-                throw new Exception("emailAddress is null");
+                throw new ArgumentNullException(nameof(emailAddress), "emailAddress is null");
             }
 
             return await _context.Emails.AnyAsync(e => e.EmailAddress == emailAddress);
@@ -140,7 +145,7 @@ namespace LocalEmailExplorer.Services.EmailAPI.Services
         {
             if (string.IsNullOrEmpty(id))
             {
-                throw new Exception("Id is null");
+                throw new ArgumentNullException(nameof(id), "Id is null");
             }
 
             return await _context.Emails.AnyAsync(i => i.Id == id);
@@ -150,19 +155,17 @@ namespace LocalEmailExplorer.Services.EmailAPI.Services
         {
             if (string.IsNullOrEmpty(id) || emailDto == null)
             {
-                throw new Exception("Id or emailDto is null or empty");
+                throw new ArgumentNullException("Id or emailDto is null or empty");
             }
 
             var email = await _context.Emails.FirstOrDefaultAsync(i => i.Id == id);
 
             if(email == null)
             {
-                throw new Exception("email is null");
+                throw new EmailNotFoundException($"Email with id '{id}' not found");
             }
 
-            email.Phone = emailDto.Phone;
-            email.EmailAddress = emailDto.EmailAddress;
-            email.RecoveryEmail = emailDto.RecoveryEmail;
+            _mapper.Map(emailDto, email);
 
             await _unitOfWork.SaveChangesAsync();
 

@@ -1,6 +1,8 @@
 ﻿using AutoMapper;
+using LocalEmailExplorer.Services.EmailAPI.Halpers.Exceptions;
 using LocalEmailExplorer.Services.EmailAPI.Models.DTOs;
 using LocalEmailExplorer.Services.EmailAPI.Services.Interfaces;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LocalEmailExplorer.Services.EmailAPI.Controllers
@@ -30,21 +32,23 @@ namespace LocalEmailExplorer.Services.EmailAPI.Controllers
 
                 var emailsDto = _mapper.Map<List<EmailDto>>(emails);
 
-                return new ResponseDto
+                return Ok(new ResponseDto
                 {
                     Data = emailsDto,
                     IsSuccess = true,
                     StatusCode = 200
-                };
+                });
             }
             catch(Exception ex)
             {
-                return new ResponseDto
+                _logger.LogError(ex, "Error getting all emails.");
+
+                return StatusCode(500, new ResponseDto
                 {
                     IsSuccess = false,
-                    StatusCode = 400,
-                    StatusMessage = ex.Message
-                };
+                    StatusCode = 500,
+                    StatusMessage = "An unexpected error occurred"
+                });
             }
             
         }
@@ -52,36 +56,48 @@ namespace LocalEmailExplorer.Services.EmailAPI.Controllers
 
         [HttpGet]
         [Route("{id:guid}")]
-        public async Task<ActionResult<ResponseDto>> GetEmilById(string id)
+        public async Task<ActionResult<ResponseDto>> GetEmailById(string id)
         {
             
             try
             {
                 var email = await _emailService.GetEmailByIdAsync(id);
 
+                if(email == null)
+                {
+                    return NotFound(new ResponseDto
+                    {
+                        IsSuccess = false,
+                        StatusCode = 404,
+                        StatusMessage = $"Email with Id '{id}' not found"
+                    });
+                }
+
                 var emailDto = _mapper.Map<EmailDto>(email);
 
-                return new ResponseDto
+                return Ok(new ResponseDto
                 {
                     Data = emailDto,
                     IsSuccess = true,
                     StatusCode = 200
-                };
+                });
             }
             catch(Exception ex)
             {
-                return new ResponseDto
+                _logger.LogError(ex, $"Error getting email by Id '{id}'", id);
+
+                return StatusCode(500, new ResponseDto
                 {
                     IsSuccess = false,
-                    StatusCode = 400,
-                    StatusMessage = ex.Message
-                };
+                    StatusCode = 500,
+                    StatusMessage = "An unexpected error occurred."
+                });
             }
         }
 
 
         [HttpGet]
-        [Route("recoveryEmail/{recoveryEmail}")]
+        [Route("recovery-email/{recoveryEmail}")]
         public async Task<ActionResult<ResponseDto>> GetEmailsByRecoveryEmail(string recoveryEmail)
         {
             try
@@ -90,26 +106,27 @@ namespace LocalEmailExplorer.Services.EmailAPI.Controllers
 
                 var emailsDto = _mapper.Map<List<EmailDto>>(emails);
 
-                return new ResponseDto
+                return Ok(new ResponseDto
                 {
                     Data = emailsDto,
                     IsSuccess = true,
                     StatusCode = 200
-                };
+                });
             }
             catch(Exception ex)
             {
-                return new ResponseDto
+                _logger.LogError(ex, $"Error getting emails by recovery email: '{recoveryEmail}", recoveryEmail);
+                return StatusCode(500, new ResponseDto
                 {
                     IsSuccess = false,
-                    StatusCode = 400,
-                    StatusMessage = ex.Message
-                };
+                    StatusCode = 500,
+                    StatusMessage = "An unexpected error occurred"
+                });
             }
         }
 
         [HttpGet]
-        [Route("phoneNumber/{phoneNumber}")]
+        [Route("phone-number/{phoneNumber}")]
         public async Task<ActionResult<ResponseDto>> GetEmailsByPhoneNumber(string phoneNumber)
         {
             try
@@ -118,21 +135,22 @@ namespace LocalEmailExplorer.Services.EmailAPI.Controllers
 
                 var emailsDto = _mapper.Map<List<EmailDto>>(emails);
 
-                return new ResponseDto
+                return Ok(new ResponseDto
                 {
                     Data = emailsDto,
                     IsSuccess = true,
                     StatusCode = 200
-                };
+                });
             }
             catch(Exception ex)
             {
-                return new ResponseDto
+                _logger.LogError($"Error getting emails by phone number: '{phoneNumber}'", phoneNumber);
+                return StatusCode(500, new ResponseDto
                 {
                     IsSuccess = false,
-                    StatusCode = 400,
-                    StatusMessage = ex.Message
-                };
+                    StatusCode = 500,
+                    StatusMessage = "An expeteced error occurred"
+                });
             }
         }
 
@@ -141,25 +159,34 @@ namespace LocalEmailExplorer.Services.EmailAPI.Controllers
         {
             try
             {
+
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+
                 var createdEmail = await _emailService.CreateEmailAsync(emailDto);
 
                 var createdEmailDto = _mapper.Map<EmailDto>(createdEmail);
 
-                return new ResponseDto
+                return CreatedAtAction(nameof(GetEmailById), new { id = createdEmail.Id }, new ResponseDto
                 {
                     Data = createdEmailDto,
                     IsSuccess = true,
                     StatusCode = 201
-                };
+                });
+
             }
             catch(Exception ex)
             {
-                return new ResponseDto
+                _logger.LogError(ex, "Error creating email.");
+
+                return StatusCode(500, new ResponseDto
                 {
                     IsSuccess = false,
-                    StatusCode = 400,
-                    StatusMessage = ex.Message
-                };
+                    StatusCode = 500,
+                    StatusMessage = "An unexpected error occurred."
+                });
             }
         }
 
@@ -169,22 +196,50 @@ namespace LocalEmailExplorer.Services.EmailAPI.Controllers
         {
             try
             {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+
                 var updatedEmail = await _emailService.UpdateEmailAsync(emailDto, id);
 
-                return new ResponseDto
+                if (updatedEmail)
                 {
-                    IsSuccess = true,
-                    StatusCode = 200
-                };
+                    return Ok(new ResponseDto
+                    {
+                        IsSuccess = true,
+                        StatusCode = 200
+                    });
+                }
+                else
+                {
+                    return BadRequest(new ResponseDto
+                    {
+                        IsSuccess = false,
+                        StatusCode = 400,
+                        StatusMessage = "En error occurred while updating the email content"
+                    });
+                }
             }
-            catch(Exception ex)
+            catch(EmailNotFoundException ex)
             {
-                return new ResponseDto
+                _logger.LogWarning(ex, $"Email with ID '{id}' not found for update.", id);
+                return NotFound(new ResponseDto
                 {
                     IsSuccess = false,
-                    StatusCode = 400,
+                    StatusCode = 404,
                     StatusMessage = ex.Message
-                };
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error updating email with ID: {id}", id);
+                return StatusCode(500, new ResponseDto
+                {
+                    IsSuccess = false,
+                    StatusCode = 500,
+                    StatusMessage = "An unexpected error occurred."
+                });
             }
         }
 
@@ -196,27 +251,86 @@ namespace LocalEmailExplorer.Services.EmailAPI.Controllers
             {
                 var email = await _emailService.GetEmailByEmailAddressAsync(emailAddress, track:false);
 
+                if(email == null)
+                {
+                    return NotFound(new ResponseDto
+                    {
+                        IsSuccess = false,
+                        StatusCode = 404,
+                        StatusMessage = $"Email with address '{emailAddress}' not found."
+                    });
+                }
+
                 var emailDto = _mapper.Map<DeleteEmailDto>(email);
 
                 var deletedEmail = await _emailService.DeleteEmailAsync(emailDto);
 
-                return new ResponseDto
+                if (deletedEmail)
                 {
-                    IsSuccess = true,
-                    StatusCode = 200,
-                };
+                    return Ok(new ResponseDto
+                    {
+                        IsSuccess = true,
+                        StatusCode = 200,
+                    });
+                }
+                else
+                {
+                    return BadRequest(new ResponseDto
+                    {
+                        IsSuccess = false,
+                        StatusCode = 400,
+                        StatusMessage = "En error exists while deleting the email"
+                    });
+                }
+
+                
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                return new ResponseDto
+                _logger.LogError(ex, $"Error deleting email with address: {emailAddress}", emailAddress);
+                return StatusCode(500, new ResponseDto
                 {
                     IsSuccess = false,
-                    StatusCode = 400,
-                    StatusMessage = ex.Message
-                };
+                    StatusCode = 500,
+                    StatusMessage = "An unexpected error occurred."
+                });
             }
         }
 
+        [HttpGet]
+        [Route("email-address/{emailAddress}")]
+        public async Task<ActionResult<ResponseDto>> GetEmailByEmailAddressAsync(string emailAddress)
+        {
+            try
+            {
+                var email = await _emailService.GetEmailByEmailAddressAsync(emailAddress, false);
 
+                if (email == null)
+                {
+                    return NotFound(new ResponseDto
+                    {
+                        IsSuccess = false,
+                        StatusCode = 404,
+                        StatusMessage = $"Email with address '{emailAddress}' not found."
+                    });
+                }
+                return Ok(new ResponseDto
+                {
+                    Data = _mapper.Map<EmailDto>(email),
+                    IsSuccess = true,
+                    StatusCode = 200
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error getting email by email address: {emailAddress}", emailAddress);
+                return StatusCode(500, new ResponseDto
+                {
+                    IsSuccess = false,
+                    StatusCode = 500,
+                    StatusMessage = "An unexpected error occurred."
+                });
+            }
+        }
     }
 }
