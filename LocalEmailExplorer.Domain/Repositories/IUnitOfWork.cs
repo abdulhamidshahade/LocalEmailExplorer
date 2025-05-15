@@ -1,4 +1,4 @@
-﻿namespace LocalEmailExplorer.Infrastructure.Repositories
+﻿namespace LocalEmailExplorer.Domain.Repositories
 {
     public interface IUnitOfWork
     {
