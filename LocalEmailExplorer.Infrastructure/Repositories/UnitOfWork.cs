@@ -1,4 +1,5 @@
-﻿using LocalEmailExplorer.Infrastructure.Data;
+﻿using LocalEmailExplorer.Domain.Repositories;
+using LocalEmailExplorer.Infrastructure.Data;
 
 namespace LocalEmailExplorer.Infrastructure.Repositories
 {
