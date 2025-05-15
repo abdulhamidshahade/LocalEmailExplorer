@@ -1,5 +1,6 @@
 ﻿using LocalEmailExplorer.Domain.Entities;
 using LocalEmailExplorer.Domain.Entities.EmailEntities;
+using LocalEmailExplorer.Domain.Repositories;
 using LocalEmailExplorer.Domain.Repositories.UserEmailInterfaces;
 using LocalEmailExplorer.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
